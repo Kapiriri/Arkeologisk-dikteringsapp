@@ -445,6 +445,16 @@ const Engine = (() => {
   const RA = [['nordvästra','NV'],['nordöstra|nordostra','NÖ'],['sydvästra','SV'],['sydöstra|sydostra','SÖ'],['norra','N'],['södra','S'],['östra','Ö'],['västra','V']];
   const PART = '(?:delen|kanten|sidan|änden|hörnet|halvan|slänten|partiet|långsidan|kortsidan|gaveln|krönet)';
   const D = '(?:NNV|NNÖ|SSV|SSÖ|VNV|VSV|ÖNÖ|ÖSÖ|NV|NÖ|SV|SÖ|N|S|Ö|V)';
+  // motsatta väderstreck: en längdriktning går alltid mellan två motsatta streck (NV-SÖ, ÖNÖ-VSV)
+  const OPP = {N:'S',S:'N',Ö:'V',V:'Ö',NV:'SÖ',SÖ:'NV',NÖ:'SV',SV:'NÖ',NNV:'SSÖ',SSÖ:'NNV',NNÖ:'SSV',SSV:'NNÖ',VNV:'ÖSÖ',ÖSÖ:'VNV',ÖNÖ:'VSV',VSV:'ÖNÖ'};
+  const isSubseq = (a, b) => { let i = 0; for (const ch of b) if (ch === a[i]) i++; return i === a.length; };
+  function fixPair(a, b){
+    if (OPP[a] === b) return [a, b];
+    // ett streck hördes ofullständigt: "NÖ-VSV" -> "ÖNÖ-VSV"
+    if (OPP[b] && a.length < OPP[b].length && isSubseq(a, OPP[b])) return [OPP[b], b];
+    if (OPP[a] && b.length < OPP[a].length && isSubseq(b, OPP[a])) return [a, OPP[a]];
+    return [a, b];
+  }
   const SHAPES = 'närmast rund|närmast oval|närmast rektangulär|närmast kvadratisk|rund|runt|rundad|oval|rektangulär|rektangulärt|kvadratisk|kvadratiskt|triangulär|oregelbunden|oregelbundet|njurformad|avlång|långsmal|halvcirkelformad|L-formad';
 
   /* Inledande benämningar. RAÄ: beskrivningen börjar med ett substantiv som benämner lämningen
@@ -468,9 +478,10 @@ const Engine = (() => {
   const NOT_STARTER_TYPES = new Set(['hög','grop','gropar','ruin','bro','varp','torp','täkt','kåta','härd','brunn','stenvall','spisröse','källare','kokgrop','stolphål']);
   const COUNT_NOUNS = [...TYPES.filter(t => !/[,/]/.test(t)), 'kvarngrund','kvarnsten','åkeryta','åkerytor','fornlämning','fornlämningar','lämning','lämningar','täktgrop','täktgropar','kolarkoja','husgrundsterrass','källargropar','stenkrets']
     .sort((a, b) => b.length - a.length).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  const STARTERS = 'de är|de flesta|ett flertal|flera av dem|området|fyllningen|fyllning|kantkedjan|kantkedjor|kantkedja|mittblocket|mittblock|mittgropen|mittgrop|i mitten|i centrum|centralt|lämningarna|lämningen|ytan|på ytan|på ovansidan|ovansidan|stenarna|dessa|rösena|inga fynd|inga anläggningar|inget|ingen synlig|matjordslagret|matjorden|matjord|därunder|under matjorden|undergrunden|undergrund|alven|schaktet|anläggningen|fyndet|fynden|belägen|beläget|belägna|omgiven|omgivet|kring|runt om|runt gropen|runt bottnen|längs|utmed|inom området|inom|enligt|uppgift|tidigare|skadad av|skadat av|skadad genom|skadat genom|terrängen|marken|botten|bottnen|bottenplanet|vallen|väggarna|kol vid|avstånd|avståndet|syns idag|synlig|stävstenarna|i övrigt|i krönet|på krönet|på framsidan|på baksidan|på sidan' +
+  const STARTERS = 'i anslutning till|de är|de flesta|ett flertal|flera av dem|området|fyllningen|fyllning|kantkedjan|kantkedjor|kantkedja|mittblocket|mittblock|mittgropen|mittgrop|i mitten|i centrum|centralt|lämningarna|lämningen|ytan|på ytan|på ovansidan|ovansidan|stenarna|dessa|rösena|inga fynd|inga anläggningar|inget|ingen synlig|matjordslagret|matjorden|matjord|därunder|under matjorden|undergrunden|undergrund|alven|schaktet|anläggningen|fyndet|fynden|belägen|beläget|belägna|omgiven|omgivet|kring|runt om|runt gropen|runt bottnen|längs|utmed|inom området|inom|enligt|uppgift|tidigare|skadad av|skadat av|skadad genom|skadat genom|terrängen|marken|botten|bottnen|bottenplanet|vallen|väggarna|kol vid|avstånd|avståndet|syns idag|synlig|stävstenarna|i övrigt|i krönet|på krönet|på framsidan|på baksidan|på sidan' +
     '|skogsmark|hagmark|betesmark|åkermark|ängsmark|tomtmark|kalhygge|hygge|impediment|myrmark|parkmark|igenväxande|skog|åker|äng';
   const CONNECT = /^(?:och|samt|resp|respektive|eller|varav)(?![\p{L}\p{N}])/iu;
+  const AFTER_MEASURE_START = /^(?:övertorvad|övertorvat|övermossad|övermossat|övervuxen|rundad|svagt|svag|tydlig|tydligt|otydlig|runt bottenplan|bottenplan|bottnen|väggarna|mittparti|mittsten|mittblock|ytan|i ytan|synlig|kantkedja|fyllning|i mitten|i centrum|grop|rest sten)(?![\p{L}])/iu;
   const LABELS = [['antikvarisk kommentar','Antikvarisk kommentar'],['antikvarisk bedömning','Antikvarisk bedömning'],['beskrivning','Beskrivning'],['terräng','Terräng'],['orientering','Orientering'],['tradition','Tradition'],['anmärkning','Anmärkning'],['skadebeskrivning','Skador'],['skador','Skador'],['vegetation','Vegetation'],['lagerföljd','Lagerföljd'],['kommentar','Kommentar']];
   const LABEL_RX = new RegExp(`^(${LABELS.map(l => l[0]).join('|')})(?:\\s*(?:kolon|:))?(?:\\s+(.*))?$`, 'isu');
 
@@ -655,7 +666,7 @@ const Engine = (() => {
   }
 
   const TOKEN = /^([^\p{L}]*)(\p{L}[\p{L}-]*)([^\p{L}]*)$/u;
-  const JOIN_STOP = new Set(['och','i','av','en','ett','på','om','med','till','vid','ca','m','cm','är','som','det','den','de','samt','eller','x','mot','från','under','över','har','var']);
+  const JOIN_STOP = new Set(['del','delar','och','i','av','en','ett','på','om','med','till','vid','ca','m','cm','är','som','det','den','de','samt','eller','x','mot','från','under','över','har','var']);
   const keepCase = (orig, repl) => /^\p{Lu}/u.test(orig) ? repl[0].toUpperCase() + repl.slice(1) : repl;
 
   /* Fackord som taligenkänningen skriver som vanliga svenska ord ("röse" -> "rosa").
@@ -809,6 +820,15 @@ const Engine = (() => {
       const m = tok[i].match(TOKEN);
       const prevTok = out.length ? out[out.length - 1] : '';
       const sentenceStart = !out.some(x => /\p{L}/u.test(x)) || /[.!?:\n]$/.test(prevTok);
+      if (m && /^\p{Lu}/u.test(m[2]) && !sentenceStart) {
+        // stor bokstav mitt i en mening: kan vara ortnamn, så bara mycket nära fackord rättas ("Kallur" -> "kallmur")
+        const low = m[2].toLowerCase();
+        if (!VOCAB.has(low) && !inDict(low) && low.length >= 6 && DICT) {
+          let best = null, bd = 2;
+          for (const v of VOCAB_LIST) { if (v[0] !== low[0]) continue; const d = dist(low, v, 1); if (d < bd) { bd = d; best = v; } }
+          if (best && bd <= 1) { out.push(m[1] + best + m[3]); continue; }
+        }
+      }
       if (m && !(/^\p{Lu}/u.test(m[2]) && !sentenceStart)) { // ortnamn mitt i en mening rättas inte
         const low = m[2].toLowerCase();
         if (ALIAS[low]) { out.push(m[1] + keepCase(m[2], ALIAS[low]) + m[3]); continue; }
@@ -848,6 +868,16 @@ const Engine = (() => {
     t = fixTerms(t, head);
     t = t.replace(/(\d)\.(\d)/g, '$1,$2');
     t = t.replace(/(?<![\d,])(\d{1,3})((?: \d{3})+)(?!\d)/g, (m, a, b) => a + b.replace(/ /g, ''));
+    // iPhone skriver "gårdstomt del av" som "gårdstomten av" i början av beskrivningen
+    if (head) t = t.replace(/^(\s*)(\p{L}+?)(en|et) av(?=[ ,]|$)/u, (m, sp, w, e) => HEAD_SET.has(w.toLowerCase()) ? sp + w + ' - del av' : m);
+    // "fossil" står nästan alltid med "åker": "samt fossil husgrund, 16x7 m" -> "samt fossil åker. Husgrund, 16x7 m"
+    t = t.replace(R('⟨(fossil) (?!åker|åkern|åkermark|åkrar|åkerytor|åkeryta)(\\p{L}+)⟩'), (m, f, w) => {
+      const b = VOCAB.get(w.toLowerCase()); return b && HEAD_SET.has(b) ? f + ' åker.\n' + w[0].toUpperCase() + w.slice(1) : m;
+    });
+    // "Gårdstomt del av" -> "Gårdstomt - del av"
+    t = t.replace(R('⟨(\\p{L}{3,}) ?[-–]? ?del av⟩(?= |,|$)'), (m, w) => /^(?:en|ett|som|är|utgör|utgörs|till|stor|större|mindre|liten|annan)$/i.test(w) ? m : w + ' - del av');
+    // "N m DIR härom är Husgrund" -> "N m DIR härom är: Husgrund"
+    t = t.replace(R('⟨(härom|därom|om \\d+\\)?) (är|finns|ligger) (?=\\p{L})'), '$1 $2: ');
     // SWEREF-koordinater
     t = t.replace(R('(?:⟨koordinat(?:er)?⟩ ?)?⟨(?:norr|nord|n) ?(\\d{7})⟩[ ,]*⟨(?:öst|ost|e|ö) ?(\\d{6})⟩'), 'N $1 E $2');
     // halvor och upplästa decimaler
@@ -886,7 +916,7 @@ const Engine = (() => {
       // "en/ett" blir "1" bara i uppräkningar med flera antal ("1 kvarngrund och 1 kvarnsten")
       const items = (b.match(R(`⟨(?:en|ett) (?:\\p{L}+,? ){0,3}?(?:${COUNT_NOUNS})⟩`)) || []).length + (b.match(R(`(?<![\\p{L},\\d-])\\d+ (?:\\p{L}+ ){0,2}?(?:${COUNT_NOUNS})⟩`)) || []).length;
       if (items >= 2) b = b.replace(R(`⟨(?:en|ett) ((?:\\p{L}+,? ){0,3}?)(?=(?:${COUNT_NOUNS})⟩)`), '1 $1');
-      b = b.replace(/(?<![\p{L}])(?!(?:och|ca|av|resp|till|mellan|om|på|i|med|varav|samt)\s)(\p{L}{3,}) (\d+ \p{L})/gu, '$1, $2');
+      b = b.replace(/(?<![\p{L}])(?!(?:och|ca|cirka|ungefär|omkring|minst|högst|drygt|knappt|totalt|sammanlagt|över|under|av|resp|till|mellan|om|på|i|med|varav|samt)\s)(\p{L}{3,}) (\d+ \p{L})/gu, '$1, $2');
       return a + b;
     });
     for (const [a, b] of ABBR) t = t.replace(R(`⟨(?:${a})⟩`), b);
@@ -898,9 +928,18 @@ const Engine = (() => {
     t = t.replace(R(`⟨(${D}) ?(?:-|–|till) ?(${D})⟩`, 'gu'), '$1-$2');
     t = t.replace(R(`⟨(${D}) (${D})⟩`, 'gu'), '$1-$2');
     // riktning uttalad som bokstäver efter ett mått: "175x50 m ö v" -> "175x50 m (Ö-V)"
-    t = t.replace(/(\d ?m) ([nsvöo]{1,3}) ?[-–]? ?([nsvöo]{1,3})(?![\p{L}\p{N}])/giu, (m, a, x, y) => `${a} ${x.toUpperCase().replace(/O/g, 'Ö')}-${y.toUpperCase().replace(/O/g, 'Ö')}`);
+    t = t.replace(/(\d ?m) ([nsvöo]{1,3})(?:\s*[-–]\s*|\s+)([nsvöo]{1,3})(?![\p{L}\p{N}])/giu, (m, a, x, y) => {
+      const X = x.toUpperCase().replace(/O/g, 'Ö'), Y = y.toUpperCase().replace(/O/g, 'Ö');
+      return OPP[X] === Y ? `${a} ${X}-${Y}` : m;
+    });
     // längdriktning står alltid inom parentes: "(NV-SÖ)", "(huvudriktning N-S)"
-    t = t.replace(new RegExp(`(?<![(\\p{L}\\p{N}-])((?:huvudriktning|längdriktning) )?(${D}-${D})(?![\\p{L}\\p{N})-]| riktning)`, 'gu'), (m, a, b) => `(${a || ''}${b})`);
+    t = t.replace(new RegExp(`(?<![(\\p{L}\\p{N}-])((?:huvudriktning|längdriktning) )?(${D})-(${D})(?![\\p{L}\\p{N})-]| riktning)`, 'gu'), (m, a, x, y, off, str) => {
+      // "Kantkedja synlig i SV-SÖ" är en sträcka, inte en längdriktning
+      if (!a && /(?:^|\s)(?:i|från|mellan|mot|åt|till|och|samt)\s*$/i.test(str.slice(0, off))) return x + '-' + y;
+      const [p1, p2] = fixPair(x, y);
+      return `(${a || ''}${p1}-${p2})`;
+    });
+    t = t.replace(new RegExp(`\\(((?:huvudriktning|längdriktning) )?(${D})-(${D})\\)`, 'gu'), (m, a, x, y) => { const [p1, p2] = fixPair(x, y); return `(${a || ''}${p1}-${p2})`; });
     if (st.useO) t = t.replace(R(`⟨${D}⟩`, 'gu'), m => m.replaceAll('Ö', 'O'));
     if (st.times) t = t.replace(/(\d)x(\d)/g, '$1×$2');
     // kolon, L-nummer, RAÄ-nummer
@@ -916,6 +955,7 @@ const Engine = (() => {
     t = t.replace(R(' ?⟨semikolon⟩'), ';');
     t = t.replace(R(' ?⟨kolon⟩'), ':');
     t = t.replace(R(' ?⟨komma(?:tecken)?⟩'), ',');
+    t = t.replace(R('(\\p{L}) ?⟨frågetecken⟩'), '$1 (?)');
     t = t.replace(R(' ?⟨frågetecken⟩'), '?');
     t = t.replace(R(' ?⟨tankstreck⟩'), ' –');
     t = t.replace(R(' ?⟨nytt stycke⟩ ?'), '\n\n');
@@ -924,14 +964,17 @@ const Engine = (() => {
     t = t.replace(R(`⟨(${SHAPES})⟩ (?=\\d|ca⟩)`), '$1, ');
     // substantiv följt av mått: "en grop 1 m diam" -> "en grop, 1 m diam"
     t = t.replace(R('⟨(\\p{L}{3,}) (?=\\d+(?:,\\d+)?(?:-\\d+(?:,\\d+)?)?(?:x\\d+(?:,\\d+)?)* (?:m|cm|dm)⟩)'),
-      (m, w) => /^(?:ca|och|till|mellan|med|vid|resp|samt|eller|från|under|över|inom|cirka|drygt|knappt|minst|högst|intill|nära|efter|runt|omkring|upp|ned|ner|varav|som|även|bara|endast|nr|belägen|beläget|belägna|botten|bottnen|bottenplanet|matjord|matjorden|matjordslagret|alv|alven|lager|lagret|totalt|sammanlagt|uppgår|varierar|mäter|uppmätt|mellanrum|avstånd|avståndet|cirka|åt|mot|av|om|på|är|var|finns)$/i.test(w) ? m : w + ', ');
+      (m, w) => /^(?:ca|och|till|mellan|med|vid|resp|samt|eller|från|under|över|inom|cirka|drygt|knappt|minst|högst|intill|nära|efter|runt|omkring|upp|ned|ner|varav|som|även|bara|endast|nr|belägen|beläget|belägna|botten|bottnen|bottenplanet|vanligen|oftast|normalt|mestadels|regel|minst|matjord|matjorden|matjordslagret|alv|alven|lager|lagret|totalt|sammanlagt|uppgår|varierar|mäter|uppmätt|mellanrum|avstånd|avståndet|cirka|åt|mot|av|om|på|är|var|finns)$/i.test(w) ? m : w + ', ');
     // etapp 2-beteckning följd av mått eller lämningstyp: "S3 12x1,8 m" -> "S3, 12x1,8 m"
     t = t.replace(/(?<![\p{L}\p{N}])((?:S|A|F|PG)\d+) (?!och|samt|resp|eller|,)(?=[\p{L}\d])/gu, '$1, ');
     if (st.autoPunct) t = autoPunctuate(t);
     // städa
     t = t.replace(/[ \t]+/g, ' ').replace(/ ([,.;:?])/g, '$1').replace(/([,;:])(?=[^\s\d])/g, '$1 ')
          .replace(/\.(?=\p{L})/gu, '. ').replace(/([.?]) (\p{Ll})/gu, (m, a, b) => a + ' ' + b.toUpperCase())
-         .replace(/\n[ \t]*(\p{Ll})/gu, (m, b) => '\n' + b.toUpperCase());
+         .replace(/\n[ \t]*(\p{Ll})/gu, (m, b) => '\n' + b.toUpperCase())
+         .replace(/((?:härom|därom|om \d+\)?) (?:är|finns|ligger): )(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase())
+         .replace(/ - del av (?=\d|ca )/g, ' - del av, ')
+         .replace(/(?<![\p{L}])(intill|ca|drygt|knappt|minst|högst|omkring),\s+(?=\d)/gu, '$1 ');
     return t.replace(/^[ \t]+|[ \t]+$/g, '');
   }
 
@@ -944,6 +987,7 @@ const Engine = (() => {
   const LABEL_MID = 'antikvarisk kommentar|antikvarisk bedömning|terräng|orientering|tradition|anmärkning|skadebeskrivning';
   const COMMA_BEFORE = 'övertorvad|övertorvat|övertorvade|övermossad|övermossat|övermossade|beväxt|beväxta|kalspolad|kalspolat|raserad|raserat|raserade|omplockad|omplockat|delvis|bestående av|vattenfylld|vattenfyllt|skadad|skadat|skadade|belägen|beläget|belägna';
   function autoPunctuate(t){
+    t = t.replace(/([\p{L}\d)]),? (?=(?:ca )?\d+(?:,\d+)? m (?:[NSVÖO]{1,3} )?(?:härom|därom)(?![\p{L}]))/gu, '$1. ');
     // nytt fält mitt i texten: "... övertorvad terräng krön av ..." -> ny rad "Terräng: Krön av ..."
     t = t.replace(R(`([\\p{L}\\d)]) (${LABEL_MID})⟩ (?=\\p{L})`), (m, pre, lab, off, str) => {
       if (NO_BREAK_BEFORE.test(str.slice(0, off + 1))) return m;
@@ -953,7 +997,7 @@ const Engine = (() => {
       NO_BREAK_BEFORE.test(str.slice(0, off + 1)) ? m : pre + '. ' + w[0].toUpperCase() + w.slice(1));
     t = t.replace(R(`([\\p{L}\\d)]) ⟨(${MID_WEAK})⟩`), (m, pre, w, off, str) =>
       AFTER_MEASURE.test(str.slice(0, off + 1)) ? pre + '. ' + w[0].toUpperCase() + w.slice(1) : m);
-    t = t.replace(R(`((?:\\d (?:m|cm) (?:h|dj|br|l|tj|diam|st)|\\)|stenar|sten|block|stenarna|(?<![\\p{L}])[NSVÖO]{1,3})) ⟨(${COMMA_BEFORE})⟩`, 'gu'), '$1, $2');
+    t = t.replace(R(`((?:\\d (?:m|cm) (?:h|dj|br|l|tj|diam|st)|\\)|stenar|sten|block|stenarna|(?<![\\p{L}])[NSVÖO]{1,3})) ⟨(${COMMA_BEFORE})⟩(?! (?:stenar|sten|block|kantstenar|stenblock))`, 'gu'), '$1, $2');
     t = t.replace(/(\d (?:m|cm) (?:h|dj|br|l|tj|diam)|\)) (av|med) /g, '$1, $2 ');
     return t;
   }
@@ -964,7 +1008,7 @@ const Engine = (() => {
       if (low === ty) return t;
       if (low.startsWith(ty + ' ')) {
         const rest = t.slice(ty.length + 1);
-        if (/^(?:,|och|med|av|i|på|vid|invid|samt|eller|som|efter|från|utan)(?![\p{L}\p{N}])/iu.test(rest)) return t;
+        if (/^(?:[,(-]|och|med|av|i|på|vid|invid|samt|eller|som|efter|från|utan)(?![\p{L}\p{N}])/iu.test(rest) || /^[-(]/.test(rest)) return t;
         return t.slice(0, ty.length) + ', ' + rest;
       }
     }
@@ -973,6 +1017,8 @@ const Engine = (() => {
 
   function isStarter(t){
     if (/^(?:S|A|F|PG)\d/.test(t)) return true;
+    if (/^(?:ca )?\d+(?:,\d+)? m (?:[NSVÖO]{1,3} )?(?:härom|därom|om)(?![\p{L}])/iu.test(t)) return true;
+    if (/^[NSVÖO]{1,3} (?:långsidan|kortsidan|kanten|delen|hörnet|gaveln|sidan|änden|halvan|partiet)(?![\p{L}])/u.test(t)) return true;
     if (new RegExp(`^[Ii] (?:${D}|[NSVO]{1,3}) \\p{L}`, 'u').test(t)) return true;
     if (/^\p{L}+(?:na|rna|en|et|an) (?:är|har|utgörs|ligger|varierar|består)(?![\p{L}])/iu.test(t)) return true;
     const low = t.toLowerCase();
@@ -985,7 +1031,7 @@ const Engine = (() => {
   function processSegment(raw, st, head){
     let r = (raw || '').replace(/\s+/g, ' ').trim();
     if (!r) return null;
-    if (/^\p{Lu}\p{Ll}/u.test(r)) r = r[0].toLowerCase() + r.slice(1);
+    if (/^\p{Lu}\p{Ll}/u.test(r) || /^I /.test(r)) r = r[0].toLowerCase() + r.slice(1);
     const s = r.toLowerCase().replace(/[.,!?;]/g, '').trim();
     let m;
     if (/^(?:ångra\s*)+$/.test(s)) return {cmd:'undo', n:s.split(/\s+/).length};
@@ -1013,6 +1059,8 @@ const Engine = (() => {
     }
     let text = formatText(r, st, head);
     text = typeComma(text);
+    // "fossil" i slutet av ett led: iPhone tappar ofta "åker"
+    text = text.replace(/(?<![\p{L}])(fossil)$/iu, '$1 åker');
     return {text, kind:'normal', after};
   }
 
@@ -1035,6 +1083,22 @@ const Engine = (() => {
     if (seg.kind === 'sentence') return ensureDot(p) + ' ' + cap(t);
     if (!st.autoPunct) return p + ' ' + t;
     if (CONNECT.test(t)) return p + ' ' + t;
+    // meningen är uppenbart inte slut: "… och intill" + "2 m h" ska inte få kommatecken
+    if (/ - del av$/.test(p)) return p + ', ' + t;
+    if (/(?:^|\s)(?:intill|ca|cirka|och|av|med|till|mellan|i|på|om|samt|eller|resp|från|mot|vid|under|över|en|ett|de|den|det|som|är|har|minst|drygt|knappt)$/i.test(p)) return p + ' ' + t;
+    const low = t.toLowerCase(), lastSent = p.split(/[.!?\n]/).pop();
+    // i en uppräkning efter "bestående av": ny del på egen rad om den redan nämnts ("2 husgrunder" -> "Husgrund, …"),
+    // annars fortsätter uppräkningen med komma ("…, källargrund, odlingsrösen")
+    if (/bestående av/i.test(lastSent) && !/(?:^|\s)(?:är|har|utgörs|ligger|består|sammanfaller|finns|syns|begränsas)(?![\p{L}])/iu.test(low)) {
+      const w = low.split(/[ ,]/)[0], base = VOCAB.get(w) || w;
+      const mentioned = new RegExp(`(?<![\\p{L}])${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\p{L}*`, 'iu').test(lastSent);
+      if (HEAD_SET.has(base) && mentioned) return ensureDot(p) + '\n' + cap(t);
+      if (HEAD_SET.has(base) || VOCAB.has(w)) return p + ', ' + t;
+    }
+    // efter ett avslutat mått börjar nya detaljer en ny mening ("…0,5 m h. Övertorvad", "…1,5 m dj. Runt bottenplan …")
+    if (/\d (?:m|cm) (?:h|dj|diam|st|br|l|tj)$/.test(p) && AFTER_MEASURE_START.test(low)) return ensureDot(p) + ' ' + cap(t);
+    // en mening som bara är ett tillstånd ("Övertorvad.") följs av en ny mening
+    if (/^\s*(?:övertorvad|övertorvat|övermossad|övermossat|övervuxen|beväxt|kalspolad)$/i.test(lastSent)) return ensureDot(p) + ' ' + cap(t);
     if (isStarter(t)) return ensureDot(p) + ' ' + cap(t);
     return p + ', ' + t;
   }
