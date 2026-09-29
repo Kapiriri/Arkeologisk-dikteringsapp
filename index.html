@@ -342,6 +342,7 @@ dialog::backdrop{background:rgba(8,12,10,.55)}
         <span class="hint">En per rad: fras du säger = text som skrivs in som egen mening.</span>
         <textarea id="setSnip" spellcheck="false"></textarea>
       </div>
+      <p class="hint" id="diag" style="font-size:13px;color:var(--muted);margin:0"></p>
       <div class="btn-row">
         <button class="btn" id="btnResetRules">Återställ standardlistor</button>
         <button class="btn danger" id="btnWipe">Radera alla anteckningar</button>
@@ -1330,7 +1331,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     clearTimeout(restartT);
     restartT = setTimeout(() => { restartT = null; if (listening) startRec(); }, delay);
   }
-  let startsThisSession = 0, noStart = 0, netErrors = [], startedAt = 0;
+  let startsThisSession = 0, noStart = 0, netErrors = [], startedAt = 0, startWait = 6000, lastErr = '', kbAuto = false;
   const isStandalone = (() => { try { return navigator.standalone === true || matchMedia('(display-mode: standalone)').matches; } catch { return false; } })();
   function startRec(){
     clearTimeout(restartT); restartT = null;
@@ -1348,9 +1349,11 @@ if (typeof module !== 'undefined') module.exports = Engine;
       try { r.phrases = Engine.TERMS.slice(0, 120).map(w => new SpeechRecognitionPhrase(w, 5.0)); } catch { noPhrases = true; }
     }
     const mine = () => id === recId && listening;
-    r.onstart = () => { if (!mine()) return; recRunning = true; noStart = 0; lastActivity = Date.now(); };
+    const started = () => { if (!mine()) return; recRunning = true; noStart = 0; lastActivity = Date.now(); };
+    r.onstart = started; r.onaudiostart = started;
     r.onresult = e => {
       if (!mine()) return;
+      if (!recRunning) started();
       lastActivity = Date.now();
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1374,6 +1377,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     };
     r.onerror = e => {
       if (!mine()) return;
+      if (e.error !== 'no-speech' && e.error !== 'aborted') lastErr = e.error;
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         const first = startsThisSession <= 1;
         stopListening();
@@ -1401,15 +1405,19 @@ if (typeof module !== 'undefined') module.exports = Engine;
     };
     rec = r;
     startsThisSession++; startedAt = Date.now();
+    // första starten kan vänta på iPhones fråga om mikrofonen: ge den gott om tid
+    startWait = startsThisSession === 1 ? 20000 : 6000;
     try { r.start(); }
-    catch {
+    catch (err) {
+      lastErr = 'start: ' + (err && err.message || err);
       noStart++;
       if (noStart >= 4) { stopListening(); enterKbMode(isStandalone ? 'standalone' : 'nostart'); return; }
       scheduleRestart(500); return;
     }
-    // startade den inte inom 3 s: försök igen, och efter tre misslyckade starter i rad: ge besked
+    // startade den inte i tid: försök igen, och efter tre misslyckade starter i rad: ge besked
     setTimeout(() => {
       if (!mine() || recRunning) return;
+      lastErr = 'startade inte';
       noStart++;
       if (noStart >= 3) {
         stopListening();
@@ -1417,7 +1425,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
         return;
       }
       startRec();
-    }, 3000);
+    }, startWait);
   }
   function previewOf(t){
     try { return Engine.formatText(t, st, !active().text.trim()); } catch { return t; }
@@ -1427,7 +1435,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     watchT = setInterval(() => {
       if (!listening) return;
       // ingen aktiv session och ingen omstart på väg
-      if (!recRunning && !restartT && Date.now() - startedAt > 3500) startRec();
+      if (!recRunning && !restartT && Date.now() - startedAt > startWait + 500) startRec();
       // sessionen lever men har varit helt tyst länge: fräscha upp den (Edge/Safari kan hänga sig)
       else if (recRunning && Date.now() - lastActivity > 50000 && !lastInterim && !curInterim) startRec();
     }, 3000);
@@ -1463,7 +1471,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     banner.hidden = false;
   }
   banner.addEventListener('click', e => {
-    if (e.target.closest('#btnVoiceBack')) { kbMode = false; st.kbPref = false; store.set(SKEY, st); banner.hidden = true; setListeningUI(false); startListening(); return; }
+    if (e.target.closest('#btnVoiceBack')) { kbMode = false; kbAuto = false; st.kbPref = false; store.set(SKEY, st); banner.hidden = true; setListeningUI(false); startListening(); return; }
     const b = e.target.closest('[data-hide]'); if (!b) return; store.set('faltdiktat.hide.' + b.dataset.hide, true); banner.hidden = true; });
   function showUnsupported(){
     showBanner('<strong>Den här webbläsaren saknar taligenkänning.</strong> Öppna sidan i Chrome (Android, dator) eller Safari (iPhone). Du kan också diktera med tangentbordets mikrofon och sedan trycka <em>Städa text</em>.');
@@ -1486,14 +1494,14 @@ if (typeof module !== 'undefined') module.exports = Engine;
     return false;
   }
   function enterKbMode(reason){
-    kbMode = true;
+    kbMode = true; kbAuto = !!reason;
     micBtn.setAttribute('aria-label', 'Diktera med tangentbordet');
     status.textContent = 'Diktera med tangentbordets mikrofon';
     const why = reason === 'offline' ? '<strong>Ingen mobiltäckning.</strong> Taligenkänningen i webbläsaren kräver nät. Diktera med tangentbordets mikrofon så länge (iPhone kan diktera svenska utan nät): tryck på den stora mikrofonen'
       : reason === 'standalone' ? '<strong>Röststyrningen fungerar inte i hemskärmsläget på iPhone.</strong> Öppna sidan i Safari i stället. Så länge kan du diktera med tangentbordet: tryck på den stora mikrofonen'
-      : reason === 'nostart' ? '<strong>Taligenkänningen startar inte.</strong> Kontrollera att Siri och diktering är på och att sidan får använda mikrofonen. Så länge kan du diktera med tangentbordet: tryck på den stora mikrofonen'
-      : reason === 'siri' ? '<strong>Taligenkänningen är avstängd på telefonen.</strong> Slå på Siri och diktering under Inställningar för att prata direkt till appen. Så länge kan du diktera med tangentbordet: tryck på den stora mikrofonen'
-      : reason === 'mic' ? '<strong>Mikrofonen är blockerad för sidan.</strong> Tillåt mikrofon i webbläsarens inställningar för sidan för att prata direkt till appen. Så länge kan du diktera med tangentbordet: tryck på den stora mikrofonen'
+      : reason === 'nostart' ? '<strong>Taligenkänningen startar inte.</strong> Kontrollera att diktering är på (Inställningar → Allmänt → Tangentbord → Aktivera diktering) och att sidan får använda mikrofonen. Tryck sedan på mikrofonen igen'
+      : reason === 'siri' ? '<strong>iPhone tillåter inte taligenkänning.</strong> Safari och Chrome på iPhone använder Apples taligenkänning, som kräver att diktering är på: Inställningar → Allmänt → Tangentbord → Aktivera diktering, och Inställningar → Siri. Tryck sedan på mikrofonen igen. Så länge kan du diktera med tangentbordet: tryck på tangentbordets mikrofon'
+      : reason === 'mic' ? '<strong>Mikrofonen är blockerad för sidan.</strong> I Safari: tryck på aA i adressfältet → Webbplatsinställningar → Mikrofon → Tillåt. Kontrollera också Inställningar → Safari → Mikrofon. Tryck sedan på mikrofonen igen'
       : '<strong>Diktera med tangentbordet.</strong> Tryck på den stora mikrofonen';
     showBanner(why + ', sedan på mikrofonen på tangentbordet, och prata. Texten formateras enligt Fornsök när du stänger tangentbordet. Säg ”komma” och ”punkt” för skiljetecken. Tryck på ett felhört ord för att rätta det; appen lär sig rättningen till nästa gång.' + (SR && !inFrame ? ' <button type="button" class="btn" id="btnVoiceBack" style="margin-top:8px;padding:6px 12px">Prova röststyrning igen</button>' : ''), reason ? null : 'kb');
   }
@@ -1571,7 +1579,10 @@ if (typeof module !== 'undefined') module.exports = Engine;
   list.addEventListener('focusout', e => { if (e.target.matches('.card-text')) setTimeout(() => { if (document.activeElement !== ta()) fixBar.hidden = true; }, 150); });
 
   /* ---------- events ---------- */
-  micBtn.addEventListener('click', () => kbMode ? focusForDictation() : (listening ? stopListening() : startListening()));
+  micBtn.addEventListener('click', () => {
+    if (kbMode && kbAuto && SR && !inFrame) { kbMode = false; banner.hidden = true; setListeningUI(false); startListening(); return; } // prova rösten igen
+    kbMode ? focusForDictation() : (listening ? stopListening() : startListening());
+  });
   $('#btnUndo').addEventListener('click', () => undo(1));
   $('#btnNew').addEventListener('click', () => { pushUndo(); newCard(); });
 
@@ -1646,6 +1657,9 @@ if (typeof module !== 'undefined') module.exports = Engine;
 
   const setKb = $('#setKb'), setPunct = $('#setPunct'), setIds = $('#setIds'), setO = $('#setO'), setTimes = $('#setTimes'), setPause = $('#setPause'), pauseVal = $('#pauseVal'), setCorr = $('#setCorr'), setSnip = $('#setSnip');
   function fillSettings(){
+    $('#diag').textContent = 'Diagnos: taligenkänning ' + (SR ? 'finns' : 'saknas') + ' · läge: ' + (kbMode ? 'tangentbord' : 'röst') +
+      (isStandalone ? ' · hemskärmsläge' : '') + (inFrame ? ' · inbäddad' : '') + ' · senaste fel: ' + (lastErr || 'inget') +
+      ' · ' + (navigator.onLine === false ? 'offline' : 'online');
     setKb.checked = !!kbMode; setPunct.checked = st.autoPunct; setIds.checked = st.shortIds; setO.checked = st.useO; setTimes.checked = !!st.times;
     setPause.value = st.pause; pauseVal.textContent = (st.pause / 1000).toLocaleString('sv-SE', {minimumFractionDigits:1}) + ' s';
     setCorr.value = st.corrections; setSnip.value = st.snippets;
@@ -1653,7 +1667,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   function saveSettings(){
     if (setKb.checked !== !!kbMode) {
       st.kbPref = setKb.checked;
-      if (setKb.checked) { if (listening) stopListening(); enterKbMode(); }
+      if (setKb.checked) { if (listening) stopListening(); enterKbMode(); kbAuto = false; }
       else if (SR && !inFrame) { kbMode = false; banner.hidden = true; setListeningUI(false); say(restingText()); }
     }
     st.autoPunct = setPunct.checked; st.shortIds = setIds.checked; st.useO = setO.checked; st.times = setTimes.checked; st.pause = +setPause.value;
