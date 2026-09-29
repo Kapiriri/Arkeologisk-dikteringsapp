@@ -9,177 +9,202 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <meta name="apple-mobile-web-app-title" content="Fältdiktat">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: one-screen field tool. Header, scrolling list of lämning-cards, thumb-reach dock with a big mic. */
+/* Layout: one-screen field tool. Minimal header, scrolling cards per lämning, floating glass dock with the mic in thumb reach.
+   Type: the phone's own system font (SF on iPhone) for a native, clean look that works offline. */
 :root{
-  --bg:#E6EBE4;        /* lichen */
-  --surface:#F8FAF6;
-  --ink:#15201A;       /* forest ink */
-  --muted:#56665C;
-  --line:#C6D0C3;
-  --accent:#E4572E;    /* snitsel / marking tape */
-  --accent-ink:#A93A17;
+  --bg:#F3F4F1;
+  --surface:#FFFFFF;
+  --sunken:#ECEEEA;
+  --ink:#121714;
+  --muted:#6A726C;
+  --faint:#9AA19C;
+  --line:#E2E5E0;
+  --accent:#E4572E;
+  --accent-soft:#FCE9E2;
+  --accent-ink:#B23F17;
   --on-accent:#FFFFFF;
-  --good:#1E7A4B;
-  --danger:#B3261E;
-  --shadow:0 1px 0 rgba(21,32,26,.06), 0 6px 18px rgba(21,32,26,.07);
-  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --good:#1F7A4D;
+  --good-soft:#E3F2E9;
+  --danger:#C0352B;
+  --glass:rgba(255,255,255,.78);
+  --shadow-sm:0 1px 2px rgba(18,23,20,.06);
+  --shadow:0 1px 2px rgba(18,23,20,.05), 0 8px 24px rgba(18,23,20,.07);
+  --shadow-lg:0 12px 40px rgba(18,23,20,.16);
+  --f-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --r-card:22px; --r-ctl:14px;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0E1411; --surface:#17201B; --ink:#E4EBE5; --muted:#93A399; --line:#2B3831;
-    --accent:#F0683D; --accent-ink:#FF9A74; --on-accent:#1A0C06; --good:#5CC48F; --danger:#FF8A80;
-    --shadow:0 1px 0 rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.35);
+    --bg:#0B0E0C; --surface:#161A18; --sunken:#1E2320; --ink:#EDF0EE; --muted:#949C97; --faint:#6A726D; --line:#262C29;
+    --accent:#FF6E43; --accent-soft:#3A1F15; --accent-ink:#FF9A78; --on-accent:#1A0B05;
+    --good:#5ACB8E; --good-soft:#15291E; --danger:#FF7B70; --glass:rgba(24,28,26,.94);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35); --shadow-lg:0 16px 48px rgba(0,0,0,.6);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0E1411; --surface:#17201B; --ink:#E4EBE5; --muted:#93A399; --line:#2B3831;
-  --accent:#F0683D; --accent-ink:#FF9A74; --on-accent:#1A0C06; --good:#5CC48F; --danger:#FF8A80;
-  --shadow:0 1px 0 rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.35);
+  --bg:#0B0E0C; --surface:#161A18; --sunken:#1E2320; --ink:#EDF0EE; --muted:#949C97; --faint:#6A726D; --line:#262C29;
+  --accent:#FF6E43; --accent-soft:#3A1F15; --accent-ink:#FF9A78; --on-accent:#1A0B05;
+  --good:#5ACB8E; --good-soft:#15291E; --danger:#FF7B70; --glass:rgba(24,28,26,.94);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35); --shadow-lg:0 16px 48px rgba(0,0,0,.6);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-body);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-ui);-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 button,input,textarea,select{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{cursor:pointer;-webkit-user-select:none;user-select:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
 
-.app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto}
+.app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto;position:relative}
 
 /* header */
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 10px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.mark{width:10px;height:34px;border-radius:2px;background:repeating-linear-gradient(-45deg,var(--accent) 0 6px,transparent 6px 10px);flex:none}
-.brand h1{margin:0;font:700 26px/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase}
-.brand p{margin:3px 0 0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brand p.on{color:var(--accent-ink);font-weight:700}
-.top-actions{display:flex;gap:6px;flex:none}
-.icon-btn{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0}
-.icon-btn svg{width:20px;height:20px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 8px}
+.brand{min-width:0}
+.brand h1{margin:0;font:700 28px/1.1 var(--f-display);letter-spacing:-.02em}
+.brand p{margin:4px 0 0;display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand p::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.brand p.on{color:var(--accent-ink);font-weight:600}
+.brand p.on::before{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.top-actions{display:flex;gap:4px;flex:none}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;padding:0;color:var(--muted)}
+.icon-btn:hover,.icon-btn:active{background:var(--sunken);color:var(--ink)}
+.icon-btn svg{width:21px;height:21px}
 
-.banner{margin:0 16px 8px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--accent);font-size:14px}
+.banner{margin:4px 16px 8px;padding:14px 16px;border-radius:18px;background:var(--accent-soft);color:var(--ink);font-size:14px;line-height:1.5}
 .banner strong{color:var(--accent-ink)}
+.banner .btn{background:var(--surface)}
 
-/* list */
-.list{flex:1;overflow-y:auto;padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.card.is-active{box-shadow:var(--shadow);border-color:var(--ink);padding:12px 14px 10px;display:flex;flex-direction:column;gap:8px}
-.card-head{display:flex;align-items:baseline;gap:10px}
-.card-title{flex:1;min-width:0;border:0;background:transparent;padding:2px 0;font:700 22px/1.1 var(--f-display);letter-spacing:.01em;border-bottom:1px dashed transparent}
-.card-title:focus{outline:none;border-bottom-color:var(--line)}
-.card-time{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
-.example-tag{font:700 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);border:1px solid var(--accent);border-radius:99px;padding:2px 8px}
-.card-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:28px}
-.coord{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);border-radius:6px;padding:3px 8px}
+/* list of cards */
+.list{flex:1;overflow-y:auto;padding:6px 16px 190px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+.card{background:var(--surface);border:0;border-radius:var(--r-card);box-shadow:var(--shadow-sm)}
+.card.is-active{box-shadow:var(--shadow);padding:18px 18px 8px;display:flex;flex-direction:column;gap:10px}
+.card-head{display:flex;align-items:center;gap:10px}
+.card-title{flex:1;min-width:0;border:0;background:transparent;padding:0;font:700 22px/1.2 var(--f-display);letter-spacing:-.015em;border-radius:6px}
+.card-title:focus{outline:none;background:var(--sunken)}
+.card-time{font:500 12px var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.example-tag{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-soft);border-radius:99px;padding:3px 8px}
+.card-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.card-meta:empty{display:none}
+.coord{font:500 12.5px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink);background:var(--sunken);border-radius:10px;padding:5px 9px}
 .coord small{color:var(--muted);font-size:11px}
-.chip{border:1px solid var(--line);background:transparent;border-radius:99px;padding:4px 12px;font-size:13px;color:var(--muted)}
-.chip svg{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
-.guide{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-.guide-name{border:0;background:transparent;padding:2px 6px 2px 0;font:700 12px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);text-decoration:underline;text-underline-offset:3px}
-.step{font-size:12.5px;line-height:1;padding:5px 8px;border-radius:99px;border:1px dashed var(--line);color:var(--muted)}
-.step.ok{border-style:solid;border-color:var(--good);color:var(--good)}
-.step.ok::before{content:"✓ "}
-.tpl-rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;max-width:62ch}
-.tpl-group{display:flex;flex-direction:column;gap:6px}
-.tpl{border:1px solid var(--line);border-radius:12px;background:var(--bg)}
-.tpl summary{cursor:pointer;padding:10px 12px;font:700 18px/1.1 var(--f-display);letter-spacing:.01em}
-.tpl[open] summary{border-bottom:1px solid var(--line)}
-.tpl-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px}
-.tpl-steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:3px;font-size:15px}
-.tpl-steps span{color:var(--muted)}
-.tpl-tip{font-size:14px;color:var(--muted);max-width:62ch}
-.tpl-say{font-size:14px;color:var(--muted)}
-.tpl-out{font:500 14px/1.5 var(--f-mono);background:var(--surface);border-radius:8px;padding:8px 10px;overflow-wrap:anywhere}
-.card-text{width:100%;min-height:150px;border:0;background:transparent;resize:none;padding:4px 0;font:400 19px/1.55 var(--f-body);color:var(--ink);overflow:hidden}
+.chip{display:inline-flex;align-items:center;gap:5px;border:0;background:var(--sunken);border-radius:99px;padding:6px 11px;font-size:13px;color:var(--muted)}
+.chip svg{width:14px;height:14px}
+.card-text{width:100%;min-height:140px;border:0;background:transparent;resize:none;padding:2px 0;font:400 19px/1.55 var(--f-ui);color:var(--ink);overflow:hidden}
 .card-text:focus{outline:none}
-.card-text::placeholder{color:var(--muted);opacity:.8}
-.card-actions{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:8px}
-.act{border:0;background:transparent;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:700;color:var(--muted)}
-.act:hover{background:var(--bg);color:var(--ink)}
+.card-text::placeholder{color:var(--faint)}
+.card-actions{display:flex;flex-wrap:wrap;gap:2px;border-top:1px solid var(--line);margin:0 -8px;padding-top:4px}
+.act{border:0;background:transparent;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--muted)}
+.act:hover,.act:active{background:var(--sunken);color:var(--ink)}
 .act.danger{margin-left:auto}
-.act.confirm{color:var(--on-accent);background:var(--danger)}
-.card.is-idle{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 14px;width:100%}
-.card.is-idle .t{font:700 17px/1.1 var(--f-display);letter-spacing:.01em}
-.card.is-idle .p{font-size:14px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.act.confirm{color:#fff;background:var(--danger)}
+.card.is-idle{display:grid;grid-template-columns:1fr auto;column-gap:10px;align-items:center;text-align:left;padding:13px 16px;width:100%}
+.card.is-idle::after{content:"";grid-row:1 / span 2;grid-column:2;width:8px;height:8px;border-right:2px solid var(--faint);border-bottom:2px solid var(--faint);transform:rotate(-45deg)}
+.card.is-idle .t{font-weight:600;font-size:16px}
+.card.is-idle .p{grid-column:1;font-size:14px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 
-/* dock */
-.fix{display:flex;gap:6px;align-items:center;padding:2px 0 8px;font-size:14px;color:var(--muted);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
-.fix b{color:var(--ink)}
-.fix button{flex:none;border:1px solid var(--accent);background:var(--surface);color:var(--accent-ink);border-radius:99px;padding:6px 11px;font-weight:700;font-size:14px}
-.fix .x{border-color:var(--line);color:var(--muted);font-weight:400}
-.dock{flex:none;border-top:1px solid var(--line);background:var(--surface);padding:8px 16px 12px}
-.live{min-height:44px;display:flex;align-items:center;font-size:16px;line-height:1.3;color:var(--muted);padding:2px 2px 6px}
-.live.interim{color:var(--ink);font-style:italic}
+/* checklist per lämningstyp */
+.guide{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.guide-name{border:0;background:transparent;padding:0 4px 0 0;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-ink)}
+.step{font-size:12.5px;line-height:1;padding:6px 9px;border-radius:99px;background:var(--sunken);color:var(--muted)}
+.step.ok{background:var(--good-soft);color:var(--good)}
+.step.ok::before{content:"✓ ";font-weight:700}
+
+/* floating dock */
+.dock{position:absolute;left:0;right:0;bottom:0;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top, var(--bg) 55%, transparent)}
+.dock-inner{background:var(--glass);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);border-radius:28px;box-shadow:var(--shadow-lg);padding:10px 12px 12px}
+.live{min-height:40px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:15px;line-height:1.3;color:var(--muted);padding:2px 8px 8px}
+.live.interim{color:var(--ink)}
 .live.done{color:var(--good)}
 .live.warn{color:var(--accent-ink)}
 .live span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
-.side-btn{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 6px;font-size:14px;font-weight:700;min-height:64px;justify-content:center}
-.side-btn svg{width:22px;height:22px}
-.side-btn:active{transform:translateY(1px)}
-.mic{position:relative;width:84px;height:84px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);display:grid;place-items:center;box-shadow:var(--shadow)}
-.mic svg{width:34px;height:34px}
+.fix{display:flex;gap:6px;align-items:center;padding:0 2px 8px;font-size:13px;color:var(--muted);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.fix::-webkit-scrollbar{display:none}
+.fix b{color:var(--ink)}
+.fix button{flex:none;border:0;background:var(--accent-soft);color:var(--accent-ink);border-radius:99px;padding:8px 13px;font-weight:600;font-size:14px}
+.fix .x{background:var(--sunken);color:var(--muted);font-weight:500}
+.controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.side-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:transparent;border-radius:18px;padding:8px 4px;font-size:12.5px;font-weight:600;color:var(--muted);min-height:58px}
+.side-btn:hover,.side-btn:active{background:var(--sunken);color:var(--ink)}
+.side-btn svg{width:23px;height:23px}
+.mic{position:relative;isolation:isolate;z-index:0;width:76px;height:76px;border-radius:50%;border:0;background:var(--ink);color:var(--surface);display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s ease, background .2s ease}
+.mic:active{transform:scale(.95)}
+.mic svg{width:30px;height:30px}
 .mic[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
-.mic[aria-pressed="true"]::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:3px solid var(--accent);animation:pulse 1.6s ease-out infinite}
-@keyframes pulse{0%{transform:scale(.92);opacity:.9}100%{transform:scale(1.18);opacity:0}}
-@media (prefers-reduced-motion: reduce){.mic[aria-pressed="true"]::after{animation:none;opacity:.6}}
+.mic[aria-pressed="true"]::before,.mic[aria-pressed="true"]::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--accent);opacity:.35;animation:ring 1.8s ease-out infinite;z-index:-1}
+.mic[aria-pressed="true"]::after{animation-delay:.9s}
+@keyframes ring{0%{transform:scale(1);opacity:.35}100%{transform:scale(1.6);opacity:0}}
+@media (prefers-reduced-motion: reduce){.mic[aria-pressed="true"]::before,.mic[aria-pressed="true"]::after{animation:none;opacity:0}.mic{transition:none}}
 
-/* dialogs */
-dialog{border:0;border-radius:16px;padding:0;background:var(--surface);color:var(--ink);width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 40px);box-shadow:0 20px 60px rgba(0,0,0,.35)}
-dialog::backdrop{background:rgba(8,12,10,.55)}
-.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 40px)}
-.dlg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
-.dlg-head h2{margin:0;min-width:0;font:700 clamp(19px,5.4vw,24px)/1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+/* bottom sheets */
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);width:min(680px,100vw);max-width:100vw;max-height:88dvh;margin:auto auto 0;border-radius:24px 24px 0 0;box-shadow:var(--shadow-lg)}
+@media (min-width:700px){dialog{margin:auto;border-radius:24px}}
+dialog[open]{animation:sheet .25s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheet{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){dialog[open]{animation:none}}
+dialog::backdrop{background:rgba(6,9,7,.45);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.dlg{display:flex;flex-direction:column;max-height:88dvh}
+.dlg-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 20px 12px}
+.dlg-head::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--line)}
+.dlg-head h2{margin:0;min-width:0;font:700 22px/1.15 var(--f-display);letter-spacing:-.015em}
 .dlg-head .btn{flex:none}
-.dlg-body{overflow-y:auto;padding:14px 16px 18px;display:flex;flex-direction:column;gap:16px}
-.dlg-body h3{margin:0 0 6px;font:700 13px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink)}
+.dlg-body{overflow-y:auto;padding:4px 20px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:20px}
+.dlg-body h3{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .dlg-body p{margin:0;max-width:62ch}
 .say{display:flex;flex-direction:column;gap:8px}
-.say-row{display:grid;grid-template-columns:1fr;gap:2px;padding:8px 10px;background:var(--bg);border-radius:10px}
+.say-row{display:grid;gap:4px;padding:12px 14px;background:var(--sunken);border-radius:14px}
 .say-row .in{font-size:14px;color:var(--muted)}
 .say-row .in q{quotes:"”" "”"}
-.say-row .out{font:500 14px/1.4 var(--f-mono);overflow-wrap:anywhere}
-.cmds{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
-.cmds dt{font-weight:700;white-space:nowrap}
+.say-row .out{font:500 13.5px/1.45 var(--f-mono);overflow-wrap:anywhere}
+.cmds{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:15px;margin:0}
+.cmds dt{font-weight:600;white-space:nowrap}
 .cmds dd{margin:0;color:var(--muted)}
+@media (max-width:420px){.cmds{grid-template-columns:1fr;gap:2px}.cmds dd{margin-bottom:8px}}
 .abbr-wrap{overflow-x:auto}
 .abbr{border-collapse:collapse;font-size:14px;width:100%}
-.abbr td{padding:4px 8px;border-bottom:1px solid var(--line)}
-.abbr td:last-child{font-family:var(--f-mono);white-space:nowrap}
+.abbr td{padding:8px 4px;border-bottom:1px solid var(--line)}
+.abbr td:last-child{font-family:var(--f-mono);white-space:nowrap;text-align:right}
 .field{display:flex;flex-direction:column;gap:6px}
-.field label{font-weight:700}
+.field label{font-weight:600}
 .field .hint{font-size:13px;color:var(--muted)}
-.check{display:flex;gap:10px;align-items:flex-start}
-.check input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
-.field textarea{width:100%;min-height:140px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:8px 10px;font:500 13px/1.5 var(--f-mono)}
+.check{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--sunken);border-radius:14px}
+.check input{width:22px;height:22px;margin:0;accent-color:var(--accent);flex:none}
+.check label{line-height:1.35}
+.field textarea{width:100%;min-height:130px;border:0;border-radius:14px;background:var(--sunken);padding:12px 14px;font:500 13px/1.55 var(--f-mono)}
 .field input[type=range]{accent-color:var(--accent)}
-.btn{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 14px;font-weight:700}
-.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.btn.danger{color:var(--danger);border-color:var(--danger);background:transparent}
-.btn.danger.confirm{background:var(--danger);color:var(--on-accent)}
+.btn{border:0;background:var(--sunken);border-radius:99px;padding:10px 16px;font-size:15px;font-weight:600}
+.btn.primary{background:var(--ink);color:var(--surface)}
+.btn.danger{color:var(--danger);background:transparent;box-shadow:inset 0 0 0 1.5px var(--danger)}
+.btn.danger.confirm{background:var(--danger);color:#fff}
 .btn-row{display:flex;flex-wrap:wrap;gap:8px}
-.export-preview{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:10px;font:400 14px/1.5 var(--f-body);resize:vertical}
+.export-preview{width:100%;min-height:220px;border:0;border-radius:16px;background:var(--sunken);padding:14px;font:400 14px/1.55 var(--f-ui);resize:vertical}
+.tpl-rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:62ch}
+.tpl-group{display:flex;flex-direction:column;gap:8px}
+.tpl{border-radius:16px;background:var(--sunken)}
+.tpl summary{cursor:pointer;padding:14px 16px;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.tpl summary::-webkit-details-marker{display:none}
+.tpl summary::after{content:"";width:7px;height:7px;border-right:2px solid var(--faint);border-bottom:2px solid var(--faint);transform:rotate(45deg);margin-right:4px;transition:transform .2s}
+.tpl[open] summary::after{transform:rotate(-135deg)}
+.tpl-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.tpl-steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px;font-size:15px}
+.tpl-steps span{color:var(--muted)}
+.tpl-tip{font-size:14px;color:var(--muted)}
+.tpl-say{font-size:14px;color:var(--muted)}
+.tpl-out{font:500 13.5px/1.5 var(--f-mono);background:var(--surface);border-radius:12px;padding:10px 12px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div class="brand">
-      <span class="mark" aria-hidden="true"></span>
-      <div style="min-width:0">
-        <h1>Fältdiktat</h1>
-        <p id="status">Tryck på mikrofonen och börja prata</p>
-      </div>
+      <h1>Fältdiktat</h1>
+      <p id="status">Redo</p>
     </div>
     <div class="top-actions">
       <button id="btnExport" class="icon-btn" aria-label="Exportera alla anteckningar" title="Exportera">
@@ -199,8 +224,9 @@ dialog::backdrop{background:rgba(8,12,10,.55)}
   <main id="list" class="list" aria-label="Anteckningar per lämning"></main>
 
   <footer class="dock">
+   <div class="dock-inner">
     <div id="fix" class="fix" hidden></div>
-    <div id="live" class="live" aria-live="polite"><span id="liveText">Säg t.ex. ”stensättning”, paus, ”rund”, paus, ”8 meter i diameter”.</span></div>
+    <div id="live" class="live" aria-live="polite"><span id="liveText">Tryck på mikrofonen och säg t.ex. ”röse”, paus, ”rund”.</span></div>
     <div class="controls">
       <button id="btnUndo" class="side-btn" aria-label="Ångra senaste">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
@@ -214,6 +240,7 @@ dialog::backdrop{background:rgba(8,12,10,.55)}
         <span>Ny lämning</span>
       </button>
     </div>
+   </div>
   </footer>
 </div>
 
@@ -491,7 +518,7 @@ const Engine = (() => {
   ];
   const DESC_TERMS = [
     // konstruktion och detaljer
-    'kantkedja','kantsten','mittblock','mittgrop','mittsten','fyllning','stenpackning','stenfyllning','jordfyllning','plundringsgrop','grävningsgrop','krönsten','stävsten','sidosten','syllstensrad','syllsten','grundmur','kallmur','kallmurad','stenskoning','stenskodd','skalmur','täktgrop','bottenplan','tapphål','tappränna','vallgrav','ingång',
+    'grop','vall','kantkedja','kantsten','mittblock','mittgrop','mittsten','fyllning','stenpackning','stenfyllning','jordfyllning','plundringsgrop','grävningsgrop','krönsten','stävsten','sidosten','syllstensrad','syllsten','grundmur','kallmur','kallmurad','stenskoning','stenskodd','skalmur','täktgrop','bottenplan','tapphål','tappränna','vallgrav','ingång',
     // tillstånd och skador
     'raserad','omplockad','övertorvad','övermossad','övervuxen','beväxt','kalspolad','blottlagd','kantskadad','avplanad','schaktskadad','ytskadad','överodlad','genomgrävd','skadebeskrivning',
     // material och fynd
@@ -598,7 +625,9 @@ const Engine = (() => {
   }
   function suggest(word, n = 4){
     const w = (word || '').toLowerCase(); if (w.length < 3) return [];
-    return TERMS.map(t => ({t, ...scoreTerm(w, t)})).sort((a, b) => b.score - a.score).slice(0, n).map(x => x.t);
+    const first = CONFUSE[w] ? [CONFUSE[w].to] : [];
+    const rest = TERMS.map(t => ({t, ...scoreTerm(w, t)})).sort((a, b) => b.score - a.score).map(x => x.t).filter(t => !first.includes(t));
+    return [...first, ...rest].slice(0, n);
   }
 
   /* Benämningen i början av en beskrivning är nästan alltid en lämningstyp. Där matchas ett okänt ord
@@ -619,12 +648,100 @@ const Engine = (() => {
   const JOIN_STOP = new Set(['och','i','av','en','ett','på','om','med','till','vid','ca','m','cm','är','som','det','den','de','samt','eller','x','mot','från','under','över','har','var']);
   const keepCase = (orig, repl) => /^\p{Lu}/u.test(orig) ? repl[0].toUpperCase() + repl.slice(1) : repl;
 
+  /* Fackord som taligenkänningen skriver som vanliga svenska ord ("röse" -> "rosa").
+     Rättas bara där sammanhanget visar att det är lämningen som avses: i början av beskrivningen,
+     efter räkneord eller artikel av rätt genus, före mått eller form, eller som del av en sammansättning.
+     keep: nästa ord som visar att det vanliga ordet avses ("rosa granit", "hård mark"). */
+  const CONFUSE = {
+    rosa:   {to: 'röse',   g: 'ett', start: true, keep: /^(?:granit|gnejs|sten|stenar|stenen|block|blocket|häll|hällen|berg|färg|färgad|fältspat|kvarts|kvartsit|ton|nyans|blomm|blad|lav|ros)/},
+    rose:   {to: 'röse',   g: 'ett', start: true},
+    ros:    {to: 'röse',   g: 'ett', start: false},
+    rosen:  {to: 'rösen',  g: 'pl',  start: true, keep: /^(?:blomm|buske|rabatt)/},
+    rosor:  {to: 'rösen',  g: 'pl',  start: true},
+    rösten: {to: 'röset',  g: 'def', start: true},
+    röst:   {to: 'röset',  g: 'def', start: true},
+    rösta:  {to: 'röse',   g: 'ett', start: true},
+    rusa:   {to: 'röse',   g: 'ett', start: false},
+    hård:   {to: 'härd',   g: 'en',  start: true, keep: /^(?:mark|marken|yta|ytan|lera|leran|morän|packad|packat|botten|sten|stenar|grus|sand|jord)/},
+    hårdar: {to: 'härdar', g: 'pl',  start: true},
+    hårda:  {to: 'härdar', g: 'pl',  start: false, keep: /^\p{L}/u},
+    hök:    {to: 'hög',    g: 'en',  start: true},
+    hökar:  {to: 'högar',  g: 'pl',  start: true},
+    val:    {to: 'vall',   g: 'en',  start: false, keep: /^(?:av|att|mellan|för)$/},
+    valen:  {to: 'vallen', g: 'def', start: false},
+    valar:  {to: 'vallar', g: 'pl',  start: false},
+    slag:   {to: 'slagg',  g: 'en',  start: false, keep: /^(?:av|mot|i|på)$/},
+    dörs:   {to: 'dös',    g: 'en',  start: true},
+    rasa:   {to: 'röse',   g: 'ett', start: true, keep: /^(?:ihop|samman|ner|ned|in)$/},
+    resa:   {to: 'röse',   g: 'ett', start: true, keep: /^(?:till|sig|hem|ut|bort|upp)$/},
+    risa:   {to: 'röse',   g: 'ett', start: true},
+    rysa:   {to: 'röse',   g: 'ett', start: true},
+    rosie:  {to: 'röse',   g: 'ett', start: true},
+    reese:  {to: 'röse',   g: 'ett', start: true},
+    rosy:   {to: 'röse',   g: 'ett', start: true},
+    rosey:  {to: 'röse',   g: 'ett', start: true},
+    hugg:   {to: 'hög',    g: 'en',  start: true},
+    håg:    {to: 'hög',    g: 'en',  start: true},
+    hårt:   {to: 'härd',   g: 'en',  start: true, keep: /^(?:pack|tramp|slit|skad|arbet|\p{L}+(?:ad|at|ade)$)/u},
+    hörd:   {to: 'härd',   g: 'en',  start: true},
+    grupp:  {to: 'grop',   g: 'en',  start: false, keep: /^(?:av|med|om|på|\p{L}+(?:ar|er|or|n)$)/u},
+    grepp:  {to: 'grop',   g: 'en',  start: false},
+    kropp:  {to: 'grop',   g: 'en',  start: false},
+    väl:    {to: 'vall',   g: 'en',  start: false, keep: /^(?:\p{L}+(?:ad|at|ade|ig|igt|iga|lig|ligt|liga|bar|bart|bara|en)|synlig|känd|värd|det|som|och|att)$/u},
+    gåta:   {to: 'kåta',   g: 'en',  start: false},
+  };
+  const ART = {ett: /^(?:ett|detta|varje|ytterligare|något|ena|andra)$/, en: /^(?:en|denna|varje|ytterligare|någon|ena|andra)$/, pl: /^(?:flera|några|många|två|tre|fyra|fem|sex|sju|åtta|nio|tio|elva|tolv|\d+|dessa|ca|cirka|ungefär)$/, def: /^$/};
+  const WRONG_ART = {ett: /^(?:en|denna|någon)$/, en: /^(?:ett|detta|något)$/, pl: /^(?:en|ett)$/, def: /^(?:en|ett)$/};
+  const NOUN_NEXT = /^(?:\d|ca$|cirka$|rund|runt|runda|oval|ovalt|rektangulär|kvadratisk|oregelbund|avlång|närmast|av$|med$|är$|bestående|och$|i$|på$|beläg|om$|,)/;
+
+  /* Korta fackord (röse, hög, härd …) klarar inte den vanliga avståndsrättningen: där jämförs ljudet. */
+  const SHORT_BASES = ['röse','hög','härd','grop','vall','dös','kåta','varp','täkt','skåre','brunn','källa','ränna','dike','torp','fäbod','bytomt','boplats','slagg','kvarn','skans','borg','treudd','kokgrop','kolgrop','kolmila','resmila','liggmila','tjärdal','hålväg','runsten','kallmur','spisröse','gravhög','gravröse','stenmur','milstolpe','fyllning','kantsten','mittsten','mittgrop'];
+  const SHORT_KEYS = new Map();
+  for (const [f, base] of VOCAB) {
+    if (!SHORT_BASES.includes(base) || f.length > 9) continue;
+    const k = pkey(f);
+    if (SHORT_KEYS.has(k) && SHORT_KEYS.get(k) !== f) SHORT_KEYS.set(k, null); else SHORT_KEYS.set(k, f);
+  }
+  function shortFix(w){
+    if (!DICT || w.length < 3 || w.length > 9) return null;
+    const f = SHORT_KEYS.get(pkey(w));
+    return f && f[0] === w[0] && dist(w, f, 2) <= 2 ? f : null;
+  }
+
+  /* Efterled som bildar nya sammansättningar med ett fackord: "röjningsröse område" -> "röjningsröseområde". */
+  const TAILS = /^(?:område|området|områden|systemet|system|grupp|gruppen|fält|fältet|lämning|lämningen|lämningar|rad|raden)$/;
+
   function fixTerms(t, head){
+    // två varv: ord som delats i många delar ("röjning s röse område") sätts ihop stegvis
+    const made = new Set();
+    const once = fixTermsOnce(t, head, made);
+    return once === t ? once : fixTermsOnce(once, head, made);
+  }
+  function fixTermsOnce(t, head, made){
     const tok = t.split(' ');
+    // 1. fackord som hörts som vanliga ord (rosa -> röse), bara i rätt sammanhang
+    for (let i = 0; i < tok.length; i++) {
+      const m = tok[i].match(TOKEN); if (!m) continue;
+      const low = m[2].toLowerCase(), c = CONFUSE[low];
+      if (!c) continue;
+      const pm = i > 0 ? tok[i - 1].match(TOKEN) : null, nm = i + 1 < tok.length ? tok[i + 1].match(TOKEN) : null;
+      const prev = pm && !pm[3] ? pm[2].toLowerCase() : '';
+      const prevRaw = i > 0 ? tok[i - 1] : '';
+      const next = (m[3].trim() ? m[3].trim() : (i + 1 < tok.length ? tok[i + 1] : '')).toLowerCase();
+      if (c.keep && nm && !m[3] && c.keep.test(nm[2].toLowerCase())) continue;
+      // efterled i en sammansättning ("stensättnings grupp") ska inte bytas ut
+      if (TAILS.test(low) && prev && (VOCAB.has(prev) || VOCAB.has(prev.replace(/s$/, '')))) continue;
+      if (WRONG_ART[c.g].test(prev)) continue;
+      const first = i === 0;
+      const atStart = first || /[.!?:\n]$/.test(prevRaw);
+      const compound = prev && (VOCAB.has(prev + c.to) || VOCAB.has(prev + 's' + c.to) || (!inDict(prev) && prev.length >= 3 && /s$/.test(prev)));
+      const ok = (head && first) || (c.start && atStart) || compound || ART[c.g].test(prev) || /^\d/.test(prevRaw) || NOUN_NEXT.test(next);
+      if (ok) tok[i] = m[1] + keepCase(m[2], c.to) + m[3];
+    }
     const out = [];
     for (let i = 0; i < tok.length; i++) {
       let done = false;
-      // delade sammansättningar: "röjnings röse", "sten sättning", "röjning s röse"
+      // 2. delade sammansättningar: "röjnings röse", "sten sättning", "röjningsröse område"
       for (const n of [3, 2]) {
         if (i + n > tok.length) continue;
         const parts = tok.slice(i, i + n).map(x => x.match(TOKEN));
@@ -635,21 +752,35 @@ const Engine = (() => {
         const joined = cores.join('').toLowerCase();
         if (joined.length < 6) continue;
         let hit = VOCAB.has(joined) ? joined : null;
-        if (!hit && DICT && (!cores.every(c => inDict(c.toLowerCase())) || joined.length >= 9)) hit = nearest(joined, 1);
+        // fackord + efterled först: "grop område" -> "gropområde", "röjningsrösen område" -> "röjningsröseområde"
+        if (!hit && n === 2 && TAILS.test(cores[1].toLowerCase())) {
+          const a = cores[0].toLowerCase(), tl = cores[1].toLowerCase();
+          const base = VOCAB.get(a) || VOCAB.get(a.replace(/s$/, ''));
+          if (base) hit = VOCAB.has(base + tl) ? base + tl : VOCAB.has(base + 's' + tl) ? base + 's' + tl : a + tl;
+        }
+        if (!hit && DICT && (!cores.every(c => inDict(c.toLowerCase())) || joined.length >= 7)) hit = nearest(joined, n === 3 && joined.length >= 14 ? 2 : 1);
         if (!hit && head && out.length === 0 && !cores.some(c => inDict(c.toLowerCase()))) hit = headTerm(joined);
+        // fackord + efterled: "röjningsröse område", "stensättnings område"
+        if (!hit && n === 2 && TAILS.test(cores[1].toLowerCase())) {
+          const a = cores[0].toLowerCase(), base = a.replace(/s$/, '');
+          if (VOCAB.has(a) || VOCAB.has(base) || nearest(a, 1)) hit = (VOCAB.has(a) ? a : VOCAB.has(base) ? a : nearest(a, 1)) + cores[1].toLowerCase();
+        }
         if (hit) {
+          made.add(hit);
           out.push(parts[0][1] + keepCase(cores[0], hit) + parts[n - 1][3]);
           i += n - 1; done = true; break;
         }
       }
       if (done) continue;
+      // 3. enskilda felhörda ord
       const m = tok[i].match(TOKEN);
       const prevTok = out.length ? out[out.length - 1] : '';
       const sentenceStart = !out.some(x => /\p{L}/u.test(x)) || /[.!?:\n]$/.test(prevTok);
       if (m && !(/^\p{Lu}/u.test(m[2]) && !sentenceStart)) { // ortnamn mitt i en mening rättas inte
         const low = m[2].toLowerCase();
-        if (!VOCAB.has(low) && !inDict(low)) {
+        if (!VOCAB.has(low) && !inDict(low) && !made.has(low)) {
           let hit = low.length >= 5 ? nearest(low) : null;
+          if (!hit) hit = shortFix(low);
           if (!hit && head && out.every(x => !/\p{L}/u.test(x))) hit = headTerm(low);
           if (hit) { out.push(m[1] + keepCase(m[2], hit) + m[3]); continue; }
         }
@@ -1171,7 +1302,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     if (!el) { render(); return; }
     if (el.value !== c.text) el.value = c.text;
     autosize(); renderGuide();
-    if (scroll) { const card = el.closest('.card'); list.scrollTop = card.offsetTop + card.offsetHeight - list.clientHeight + 16; }
+    if (scroll) { const card = el.closest('.card'); const dock = document.querySelector('.dock'); list.scrollTop = card.offsetTop + card.offsetHeight - list.clientHeight + (dock ? dock.offsetHeight : 180) - 150; }
   }
 
   /* ---------- live line ---------- */
@@ -1288,7 +1419,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
   function setListeningUI(on){
     micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
     micBtn.setAttribute('aria-label', on ? 'Stoppa diktering' : 'Starta diktering');
-    status.textContent = on ? 'Lyssnar på svenska · säg ”ångra” för att backa' : 'Tryck på mikrofonen och börja prata';
+    status.textContent = on ? 'Lyssnar' : 'Redo';
     status.classList.toggle('on', on);
   }
   async function lockScreen(on){
@@ -1545,7 +1676,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     const el = ta();
     if (!el || document.activeElement !== el) return;
     const t = wordAtCaret(el);
-    if (!t || Engine.isKnown(t.word) || FIX_SKIP.has(t.word.toLowerCase())) { fixBar.hidden = true; fixTarget = null; return; }
+    if (!t || FIX_SKIP.has(t.word.toLowerCase())) { fixBar.hidden = true; fixTarget = null; return; } // även riktiga ord, t.ex. "rosa" som skulle vara "röse"
     if (fixTarget && fixTarget.word === t.word && fixTarget.index === t.index && !fixBar.hidden) return;
     fixTarget = t;
     const sug = Engine.suggest(t.word, 4);
