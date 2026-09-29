@@ -1,7 +1,7 @@
 /* Fältdiktat – offlinestöd.
    Appen hämtas från nätet när det finns täckning (så att uppdateringar kommer fram direkt)
    och från telefonens cache när det saknas täckning eller nätet är för långsamt. */
-const CACHE = 'faltdiktat-v3';
+const CACHE = 'faltdiktat-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

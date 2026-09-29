@@ -388,6 +388,14 @@ dialog::backdrop{background:rgba(6,9,7,.45);-webkit-backdrop-filter:blur(2px);ba
         <button class="btn" id="btnSaveTxt">Spara som textfil</button>
         <button class="btn" id="btnShare" hidden>Dela</button>
       </div>
+      <details id="heardBox" class="tpl">
+        <summary>Vad taligenkänningen hörde</summary>
+        <div class="tpl-body">
+          <p class="tpl-tip">Exakt det som taligenkänningen skickade, innan appen rättade och formaterade. Kopiera och skicka om ett ord ofta blir fel, så kan rättningen förbättras.</p>
+          <textarea id="heardText" class="export-preview" readonly aria-label="Hörlogg"></textarea>
+          <div class="btn-row"><button class="btn" id="btnCopyHeard">Kopiera hörloggen</button><button class="btn danger" id="btnClearHeard">Töm hörloggen</button></div>
+        </div>
+      </details>
     </div>
   </div>
 </dialog>
@@ -460,7 +468,7 @@ const Engine = (() => {
   const NOT_STARTER_TYPES = new Set(['hög','grop','gropar','ruin','bro','varp','torp','täkt','kåta','härd','brunn','stenvall','spisröse','källare','kokgrop','stolphål']);
   const COUNT_NOUNS = [...TYPES.filter(t => !/[,/]/.test(t)), 'kvarngrund','kvarnsten','åkeryta','åkerytor','fornlämning','fornlämningar','lämning','lämningar','täktgrop','täktgropar','kolarkoja','husgrundsterrass','källargropar','stenkrets']
     .sort((a, b) => b.length - a.length).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  const STARTERS = 'fyllningen|fyllning|kantkedjan|kantkedjor|kantkedja|mittblocket|mittblock|mittgropen|mittgrop|i mitten|i centrum|centralt|lämningarna|lämningen|ytan|på ytan|på ovansidan|ovansidan|stenarna|dessa|rösena|inga fynd|inga anläggningar|inget|ingen synlig|matjordslagret|matjorden|matjord|därunder|under matjorden|undergrunden|undergrund|alven|schaktet|anläggningen|fyndet|fynden|belägen|beläget|belägna|omgiven|omgivet|kring|runt om|runt gropen|runt bottnen|längs|utmed|inom området|inom|enligt|uppgift|tidigare|skadad av|skadat av|skadad genom|skadat genom|terrängen|marken|botten|bottnen|bottenplanet|vallen|väggarna|kol vid|avstånd|avståndet|syns idag|synlig|stävstenarna|i övrigt|i krönet|på krönet|på framsidan|på baksidan|på sidan' +
+  const STARTERS = 'de är|de flesta|ett flertal|flera av dem|området|fyllningen|fyllning|kantkedjan|kantkedjor|kantkedja|mittblocket|mittblock|mittgropen|mittgrop|i mitten|i centrum|centralt|lämningarna|lämningen|ytan|på ytan|på ovansidan|ovansidan|stenarna|dessa|rösena|inga fynd|inga anläggningar|inget|ingen synlig|matjordslagret|matjorden|matjord|därunder|under matjorden|undergrunden|undergrund|alven|schaktet|anläggningen|fyndet|fynden|belägen|beläget|belägna|omgiven|omgivet|kring|runt om|runt gropen|runt bottnen|längs|utmed|inom området|inom|enligt|uppgift|tidigare|skadad av|skadat av|skadad genom|skadat genom|terrängen|marken|botten|bottnen|bottenplanet|vallen|väggarna|kol vid|avstånd|avståndet|syns idag|synlig|stävstenarna|i övrigt|i krönet|på krönet|på framsidan|på baksidan|på sidan' +
     '|skogsmark|hagmark|betesmark|åkermark|ängsmark|tomtmark|kalhygge|hygge|impediment|myrmark|parkmark|igenväxande|skog|åker|äng';
   const CONNECT = /^(?:och|samt|resp|respektive|eller|varav)(?![\p{L}\p{N}])/iu;
   const LABELS = [['antikvarisk kommentar','Antikvarisk kommentar'],['antikvarisk bedömning','Antikvarisk bedömning'],['beskrivning','Beskrivning'],['terräng','Terräng'],['orientering','Orientering'],['tradition','Tradition'],['anmärkning','Anmärkning'],['skadebeskrivning','Skador'],['skador','Skador'],['vegetation','Vegetation'],['lagerföljd','Lagerföljd'],['kommentar','Kommentar']];
@@ -518,6 +526,8 @@ const Engine = (() => {
   ];
   const DESC_TERMS = [
     // konstruktion och detaljer
+    // vanliga ord i Fornsök-beskrivningar
+    'röjningssten','röjningsyta','stenröjning','jordfast','flyttblock','stensträngar','stenströ','åkerren','åkerkant','hackerör','röseliknande','högliknande','hägnadsrest','fornåker','kulturmark','lämningsområde','fornlämningsområde','kantställd','uppallad','klumpsten','blockgrav','fyllningssten','kantkedjesten','stenstorlek','kolfragment','sotfläck','härdbotten','härdgrop','kokstenar','eldpåverkad','markberedning','markberedningsspår','skogsbilväg','traktorväg','körspår','kraftledningsgata','övervuxen','mossbevuxen','lavbevuxen','grästorv','torvtäcke','tuvig','stenrik','stenfri','rundkullig','skarpkantad','kantig','rundad','rösebildning','röseförekomst','hålvägsliknande',
     'grop','vall','kantkedja','kantsten','mittblock','mittgrop','mittsten','fyllning','stenpackning','stenfyllning','jordfyllning','plundringsgrop','grävningsgrop','krönsten','stävsten','sidosten','syllstensrad','syllsten','grundmur','kallmur','kallmurad','stenskoning','stenskodd','skalmur','täktgrop','bottenplan','tapphål','tappränna','vallgrav','ingång',
     // tillstånd och skador
     'raserad','omplockad','övertorvad','övermossad','övervuxen','beväxt','kalspolad','blottlagd','kantskadad','avplanad','schaktskadad','ytskadad','överodlad','genomgrävd','skadebeskrivning',
@@ -580,7 +590,7 @@ const Engine = (() => {
     }
     return prev[b.length];
   }
-  const letterOk = (w, f) => dist(w, f, 3) <= Math.min(3, Math.max(2, Math.ceil(w.length * 0.3)));
+  const letterOk = (w, f) => { const lim = w.length >= 12 ? Math.min(5, Math.ceil(w.length * 0.34)) : Math.min(3, Math.max(2, Math.ceil(w.length * 0.3))); return dist(w, f, lim) <= lim; };
   function phonetic(w){
     if (!DICT) return null; // utan ordlista vågar vi inte gissa på ljud
     const k = pkey(w);
@@ -653,6 +663,7 @@ const Engine = (() => {
      efter räkneord eller artikel av rätt genus, före mått eller form, eller som del av en sammansättning.
      keep: nästa ord som visar att det vanliga ordet avses ("rosa granit", "hård mark"). */
   const CONFUSE = {
+    rasen:  {to: 'rösen',  g: 'pl',  start: true, keep: /^(?:hund|katt|häst|ko|får)/},
     rosa:   {to: 'röse',   g: 'ett', start: true, keep: /^(?:granit|gnejs|sten|stenar|stenen|block|blocket|häll|hällen|berg|färg|färgad|fältspat|kvarts|kvartsit|ton|nyans|blomm|blad|lav|ros)/},
     rose:   {to: 'röse',   g: 'ett', start: true},
     ros:    {to: 'röse',   g: 'ett', start: false},
@@ -694,6 +705,26 @@ const Engine = (() => {
   const WRONG_ART = {ett: /^(?:en|denna|någon)$/, en: /^(?:ett|detta|något)$/, pl: /^(?:en|ett)$/, def: /^(?:en|ett)$/};
   const NOUN_NEXT = /^(?:\d|ca$|cirka$|rund|runt|runda|oval|ovalt|rektangulär|kvadratisk|oregelbund|avlång|närmast|av$|med$|är$|bestående|och$|i$|på$|beläg|om$|,)/;
 
+  /* Förkortade sammansättningar som taligenkänningen gör: "röjnings område" -> röjningsröseområde. */
+  const ALIAS = {'röjningsområde': 'röjningsröseområde', 'röjningsområdet': 'röjningsröseområdet', 'röjningsområden': 'röjningsröseområden',
+    'odlingsröseområdet': 'odlingsröseområdet', 'röjningsrösområde': 'röjningsröseområde', 'räddningsområde': 'röjningsröseområde'};
+  /* Förled som hörs som vanliga ord: "röjnings-" blir "räddnings-". */
+  const PREFIX = [['räddnings', 'röjnings'], ['rättnings', 'röjnings'], ['rödnings', 'röjnings'], ['räjnings', 'röjnings'], ['röjdnings', 'röjnings'],
+    ['räddning', 'röjning'], ['rättning', 'röjning'], ['rödning', 'röjning']];
+  function fixPrefix(tok, next){
+    const m = tok.match(TOKEN); if (!m) return tok;
+    const low = m[2].toLowerCase();
+    for (const [a, b] of PREFIX) {
+      if (!low.startsWith(a)) continue;
+      const rest = low.slice(a.length);
+      // som eget ord: bara när nästa ord är ett röse-, sten- eller yt-ord ("räddnings rasen", "räddning sten")
+      if (!rest && !/^(?:r[öoaäe]s|ros|ras|sten|yt|omr)/i.test(next || '')) continue;
+      if (rest && !/^(?:r[öoaäe]s|ros|ras|sten|yt|omr)/.test(rest)) continue;
+      return m[1] + keepCase(m[2], b + rest) + m[3];
+    }
+    return tok;
+  }
+
   /* Korta fackord (röse, hög, härd …) klarar inte den vanliga avståndsrättningen: där jämförs ljudet. */
   const SHORT_BASES = ['röse','hög','härd','grop','vall','dös','kåta','varp','täkt','skåre','brunn','källa','ränna','dike','torp','fäbod','bytomt','boplats','slagg','kvarn','skans','borg','treudd','kokgrop','kolgrop','kolmila','resmila','liggmila','tjärdal','hålväg','runsten','kallmur','spisröse','gravhög','gravröse','stenmur','milstolpe','fyllning','kantsten','mittsten','mittgrop'];
   const SHORT_KEYS = new Map();
@@ -719,6 +750,7 @@ const Engine = (() => {
   }
   function fixTermsOnce(t, head, made){
     const tok = t.split(' ');
+    for (let i = 0; i < tok.length; i++) tok[i] = fixPrefix(tok[i], tok[i + 1]);
     // 1. fackord som hörts som vanliga ord (rosa -> röse), bara i rätt sammanhang
     for (let i = 0; i < tok.length; i++) {
       const m = tok[i].match(TOKEN); if (!m) continue;
@@ -751,7 +783,7 @@ const Engine = (() => {
         if (cores.some((c, k) => (c.length < 2 && !(k > 0 && k < n - 1 && c.toLowerCase() === 's') && !(head && out.length === 0 && k === n - 1 && /^[åäöeoa]$/i.test(c))) || JOIN_STOP.has(c.toLowerCase()))) continue;
         const joined = cores.join('').toLowerCase();
         if (joined.length < 6) continue;
-        let hit = VOCAB.has(joined) ? joined : null;
+        let hit = VOCAB.has(joined) ? joined : ALIAS[joined] || null;
         // fackord + efterled först: "grop område" -> "gropområde", "röjningsrösen område" -> "röjningsröseområde"
         if (!hit && n === 2 && TAILS.test(cores[1].toLowerCase())) {
           const a = cores[0].toLowerCase(), tl = cores[1].toLowerCase();
@@ -765,6 +797,7 @@ const Engine = (() => {
           const a = cores[0].toLowerCase(), base = a.replace(/s$/, '');
           if (VOCAB.has(a) || VOCAB.has(base) || nearest(a, 1)) hit = (VOCAB.has(a) ? a : VOCAB.has(base) ? a : nearest(a, 1)) + cores[1].toLowerCase();
         }
+        if (hit && ALIAS[hit]) hit = ALIAS[hit];
         if (hit) {
           made.add(hit);
           out.push(parts[0][1] + keepCase(cores[0], hit) + parts[n - 1][3]);
@@ -778,6 +811,7 @@ const Engine = (() => {
       const sentenceStart = !out.some(x => /\p{L}/u.test(x)) || /[.!?:\n]$/.test(prevTok);
       if (m && !(/^\p{Lu}/u.test(m[2]) && !sentenceStart)) { // ortnamn mitt i en mening rättas inte
         const low = m[2].toLowerCase();
+        if (ALIAS[low]) { out.push(m[1] + keepCase(m[2], ALIAS[low]) + m[3]); continue; }
         if (!VOCAB.has(low) && !inDict(low) && !made.has(low)) {
           let hit = low.length >= 5 ? nearest(low) : null;
           if (!hit) hit = shortFix(low);
@@ -840,13 +874,18 @@ const Engine = (() => {
     t = t.replace(R('(\\d)(m|cm|dm|mm|km)⟩'), '$1 $2');
     for (const [alts, ab] of QUAL) t = t.replace(R(`(\\d ?(?:m|cm|dm|mm))⟩ (?:${alts})⟩`), `$1 ${ab}`);
     // mått i följd: "1,6 m h 0,6 m br" -> "1,6 m h, 0,6 m br"
-    t = t.replace(/(\d (?:m|cm) (?:h|dj|br|l|tj|diam)) (?=(?:ca )?\d)/gu, '$1, ');
+    t = t.replace(/(\d (?:m|cm) (?:h|dj|br|l|tj|diam|st)) (?=(?:ca )?\d)/gu, '$1, ');
     t = t.replace(R('⟨(?:i diameter|diameter)⟩'), 'diam');
+    // "ett trettiotal" -> "ett 30-tal" (så skrivs antal i Fornsök)
+    t = t.replace(R('⟨(?:(ett) )?(tio|tjugo|trettio|fyrtio|femtio|sextio|sjuttio|åttio|nittio|hundra)tal(et)?⟩'), (m, ett, n, def) => (ett ? ett + ' ' : 'ett ') + wnum(n) + '-tal' + (def || ''));
+    t = t.replace(R('⟨(?:(ett) )?(\\d+) ?-? ?tal⟩'), (m, ett, n) => (ett ? ett + ' ' : 'ett ') + n + '-tal');
     // antal skrivs med siffror: "tre stenar" -> "3 stenar", "bestående av en husgrund" -> "bestående av 1 husgrund"
     t = t.replace(R(`⟨(${NW2}) (?=\\p{L})`), (m, a) => wnum(a) + ' ');
     // uppräkning efter "bestående av": siffror och komma mellan leden
     t = t.replace(/((?:bestående av|utgörs av|omfattar|omfattande)(?![\p{L}]))([^.\n]*)/giu, (m, a, b) => {
-      b = b.replace(R(`⟨(?:en|ett) ((?:\\p{L}+,? ){0,3}?)(?=(?:${COUNT_NOUNS})⟩)`), '1 $1');
+      // "en/ett" blir "1" bara i uppräkningar med flera antal ("1 kvarngrund och 1 kvarnsten")
+      const items = (b.match(R(`⟨(?:en|ett) (?:\\p{L}+,? ){0,3}?(?:${COUNT_NOUNS})⟩`)) || []).length + (b.match(R(`(?<![\\p{L},\\d-])\\d+ (?:\\p{L}+ ){0,2}?(?:${COUNT_NOUNS})⟩`)) || []).length;
+      if (items >= 2) b = b.replace(R(`⟨(?:en|ett) ((?:\\p{L}+,? ){0,3}?)(?=(?:${COUNT_NOUNS})⟩)`), '1 $1');
       b = b.replace(/(?<![\p{L}])(?!(?:och|ca|av|resp|till|mellan|om|på|i|med|varav|samt)\s)(\p{L}{3,}) (\d+ \p{L})/gu, '$1, $2');
       return a + b;
     });
@@ -858,6 +897,8 @@ const Engine = (() => {
     t = t.replace(R(`⟨(?:[Oo]rienter(?:ad|at|ade)|[Ii] riktning(?:en)?|[Rr]iktning)⟩ (${D}) ?(?:-|–|till|mot)? ?(${D})⟩`, 'gu'), '($1-$2)');
     t = t.replace(R(`⟨(${D}) ?(?:-|–|till) ?(${D})⟩`, 'gu'), '$1-$2');
     t = t.replace(R(`⟨(${D}) (${D})⟩`, 'gu'), '$1-$2');
+    // riktning uttalad som bokstäver efter ett mått: "175x50 m ö v" -> "175x50 m (Ö-V)"
+    t = t.replace(/(\d ?m) ([nsvöo]{1,3}) ?[-–]? ?([nsvöo]{1,3})(?![\p{L}\p{N}])/giu, (m, a, x, y) => `${a} ${x.toUpperCase().replace(/O/g, 'Ö')}-${y.toUpperCase().replace(/O/g, 'Ö')}`);
     // längdriktning står alltid inom parentes: "(NV-SÖ)", "(huvudriktning N-S)"
     t = t.replace(new RegExp(`(?<![(\\p{L}\\p{N}-])((?:huvudriktning|längdriktning) )?(${D}-${D})(?![\\p{L}\\p{N})-]| riktning)`, 'gu'), (m, a, b) => `(${a || ''}${b})`);
     if (st.useO) t = t.replace(R(`⟨${D}⟩`, 'gu'), m => m.replaceAll('Ö', 'O'));
@@ -896,7 +937,7 @@ const Engine = (() => {
 
   /* Skiljetecken inne i ett långt led (dikterat utan pauser eller med tangentbordet):
      ny mening före ord som inleder en ny del av beskrivningen, komma före tillstånd och material. */
-  const MID_STRONG = 'kol vid provstick|inga fynd|inga anläggningar|därunder|stävstenarna|rösena är|groparna är|stensättningarna är|högarna är|husgrunden är|stenarna är|dessa utgörs|dessa är';
+  const MID_STRONG = 'de är|dessa är|de flesta|ett flertal|flera av dem|området|lämningen|lämningarna|rösena|enstaka rösen|kol vid provstick|inga fynd|inga anläggningar|därunder|stävstenarna|rösena är|groparna är|stensättningarna är|högarna är|husgrunden är|stenarna är|dessa utgörs|dessa är';
   const MID_WEAK = 'fyllningen|fyllning|kantkedjan|kantkedjor|kantkedja|mittblocket|mittblock|mittgropen|mittgrop|i mitten|i centrum|i krönet|matjordslagret|matjorden|matjord|kring bottnen|kring gropen|runt gropen';
   const NO_BREAK_BEFORE = /(?:^|\s)(?:och|i|av|en|ett|med|på|under|vid|om|mot|från|till|som|den|det|de|samt|eller|även|men|utan|efter|ur|genom|mellan|vars|ingen|inga|någon|några|resp|kring|runt|längs|utmed|inom|nära|intill|hela|alla)$/i;
   const AFTER_MEASURE = /(?:\d (?:m|cm) (?:h|dj|br|l|tj|diam|st)|\d (?:m|cm)|\)|stenar|stenarna|block|övertorvad|övertorvat|övertorvade|övermossad|övermossat|övermossade|beväxt|beväxta|provstick)$/i;
@@ -1359,6 +1400,18 @@ if (typeof module !== 'undefined') module.exports = Engine;
     }, {enableHighAccuracy:true, timeout:20000, maximumAge:5000});
   }
 
+  /* ---------- hörlogg: exakt vad taligenkänningen skickade, för felsökning ---------- */
+  function logHeard(c, raw, alts, kind){
+    if (!c) return;
+    c.heard = c.heard || [];
+    c.heard.push({t: raw, a: alts && alts.length ? alts.slice(0, 5) : undefined, k: kind, at: Date.now()});
+    if (c.heard.length > 300) c.heard.splice(0, c.heard.length - 300);
+  }
+  function heardText(){
+    return S.cards.filter(c => c.heard && c.heard.length).map(c => '## ' + c.title + '\n' +
+      c.heard.map(h => (h.k === 'tangentbord' ? '[tangentbord] ' : '') + h.t + (h.a ? '   (alternativ: ' + h.a.join(' | ') + ')' : '')).join('\n')).join('\n\n') || 'Inget har dikterats ännu.';
+  }
+
   /* ---------- commit a spoken segment ---------- */
   let lastCommit = {text:'', t:0};
   function commit(raw){
@@ -1367,6 +1420,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     if (raw.toLowerCase() === lastCommit.text && now - lastCommit.t < 1500) return;
     lastCommit = {text: raw.toLowerCase(), t: now};
     const c = active();
+    logHeard(c, raw, lastAlts); lastAlts = [];
     const res = Engine.processSegment(raw, st, !c.text.trim());
     if (!res) return;
     if (res.cmd) {
@@ -1447,9 +1501,11 @@ if (typeof module !== 'undefined') module.exports = Engine;
     while (i < w.length && acc.length < pk.length) { acc += letters(w[i]); i++; }
     return w.slice(i).join(' ');
   }
+  let lastAlts = [];
   const bestOf = res => {
     const alts = [];
     for (let k = 0; k < res.length; k++) if (res[k] && res[k].transcript) alts.push(res[k].transcript);
+    lastAlts = alts.length > 1 ? alts : [];
     return alts.length > 1 ? Engine.pickBest(alts) : (alts[0] || '');
   };
   function forceCommit(){
@@ -1651,6 +1707,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
     const next = Engine.tidy(c.text, st) + trail;
     if (next === c.text) return;
     undoStack.push(snap()); redoStack.length = 0;
+    logHeard(c, c.text, null, 'tangentbord');
     c.text = next; el.value = next;
     if (document.activeElement === el) { try { el.setSelectionRange(next.length, next.length); } catch {} }
     autosize(); renderGuide(); save();
@@ -1727,7 +1784,7 @@ if (typeof module !== 'undefined') module.exports = Engine;
       case 'tidy': {
         const next = Engine.tidy(c.text, st);
         if (next.trim() === c.text.trim()) { say('Inget att ändra. Tryck på ett felhört ord för att rätta det.', 'warn', 3500); break; }
-        pushUndo(); c.text = next; save(); showActiveText(false); say('Texten städad. ”Ångra” tar tillbaka originalet.', 'done', 3000); break;
+        pushUndo(); logHeard(c, c.text, null, 'tangentbord'); c.text = next; save(); showActiveText(false); say('Texten städad. ”Ångra” tar tillbaka originalet.', 'done', 3000); break;
       }
       case 'pos': getPosition(); break;
       case 'tpl': openTemplates(btn.dataset.tpl); break;
@@ -1837,6 +1894,14 @@ if (typeof module !== 'undefined') module.exports = Engine;
     $('#dlgExport').showModal();
   });
   $('#btnCopyAll').addEventListener('click', () => copyText(exportAll(), 'Allt kopierat'));
+  $('#heardBox').addEventListener('toggle', () => { $('#heardText').value = heardText(); });
+  $('#btnCopyHeard').addEventListener('click', () => copyText(heardText(), 'Hörloggen kopierad'));
+  $('#btnClearHeard').addEventListener('click', e => {
+    const b = e.currentTarget;
+    if (!b.classList.contains('confirm')) { b.classList.add('confirm'); b.textContent = 'Tryck igen för att tömma'; setTimeout(() => { b.classList.remove('confirm'); b.textContent = 'Töm hörloggen'; }, 3500); return; }
+    S.cards.forEach(c => { delete c.heard; }); save(); $('#heardText').value = heardText();
+    b.classList.remove('confirm'); b.textContent = 'Töm hörloggen';
+  });
   $('#btnSaveTxt').addEventListener('click', () => {
     const blob = new Blob([exportAll()], {type:'text/plain;charset=utf-8'});
     const a = document.createElement('a');
